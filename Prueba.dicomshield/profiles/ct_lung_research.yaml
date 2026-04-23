@@ -1,0 +1,28 @@
+profile:
+  name: "ct_lung_research_v1"
+  description: "Perfil base para CT pulmonar en investigación"
+
+policies:
+  # Eliminar tags privados del fabricante para reducir fugas de PHI.
+  remove_private_tags: true
+  # Aplicar reglas también dentro de secuencias (SQ).
+  recurse_sequences: true
+  # Si DICOM indica texto incrustado en píxel, marcar para cuarentena.
+  reject_burned_in_yes: true
+
+tag_actions:
+  # Identificadores directos
+  "(0010,0010)": {action: "replace", value: "ANON"}       # PatientName
+  "(0010,0020)": {action: "pseudonymize", prefix: "PID_"} # PatientID
+  "(0010,0030)": {action: "remove"}                       # PatientBirthDate
+  "(0008,0050)": {action: "remove"}                       # AccessionNumber
+  "(0008,0090)": {action: "remove"}                       # ReferringPhysicianName
+
+  # Texto libre de riesgo: puede contener nombres o IDs
+  "(0008,1030)": {action: "clean_text"} # StudyDescription
+  "(0008,103E)": {action: "clean_text"} # SeriesDescription
+  "(0018,1030)": {action: "clean_text"} # ProtocolName
+
+uids:
+  # Si está activo, remapea UIDs con hash determinístico.
+  remap: true

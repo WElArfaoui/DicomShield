@@ -15,4 +15,7 @@ dicomshield = "dicomshield.cli:app"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backed = "setuptools.build_meta"
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["dicomshield"]

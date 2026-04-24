@@ -37,6 +37,24 @@ If you run without options, DicomShield prompts for the required paths and secre
 dicomshield deid
 ```
 
+## Commands
+
+| Command | Description |
+|---|---|
+| `deid` | Pseudo-anonymise all DICOM files in a directory |
+| `validate` | Validate a YAML profile and show its configured rules |
+| `audit` | Browse and filter the audit log |
+| `report` | Show a processing summary from the audit log |
+
+```bash
+dicomshield validate --profile ./profiles/ct_lung_research.yaml
+
+dicomshield report --audit-file ./audit.jsonl
+
+dicomshield audit --audit-file ./audit.jsonl --errors
+dicomshield audit --audit-file ./audit.jsonl --status quarantine --tail 20
+```
+
 ## Security notes
 
 - **`DICOMSHIELD_SECRET`** must be a strong random string. All pseudonyms (PatientID, UIDs) are derived from this key via HMAC-SHA256. Losing the key means pseudonyms cannot be reproduced; sharing it breaks pseudonymisation.
@@ -57,14 +75,19 @@ See `profiles/ct_lung_research.yaml` for a complete annotated example.
 | `keep_year` | Truncate date to `YYYY0101` |
 | `map_csv` | Replace using a CSV lookup table |
 
-### CSV mapping for AccessionNumber
+### CSV mapping (`map_csv`)
 
-The sample profile supports replacing `AccessionNumber` via a CSV lookup:
+Any tag can be replaced using a CSV lookup table. The sample profile uses it
+to map the hospital record number (NHC) to a research ID for both `PatientID`
+and `AccessionNumber`.
 
-- `csv_path`: path to CSV (supports `${ENV_VAR}` expansion)
-- `key_column`: column whose value matches the DICOM tag (e.g. `nhc`)
-- `value_column`: column to use as replacement (e.g. `id_ielcap`)
-- `fallback`: `keep` (default) or `remove` when no match is found
+| Field | Description |
+|---|---|
+| `csv_path` | Path to the CSV file. Supports `${ENV_VAR}` expansion. |
+| `key_column` | Column whose value is matched against the DICOM tag (e.g. `nhc`). |
+| `value_column` | Column used as the replacement value (e.g. `id_ielcap`). |
+| `fallback` | What to do when no match is found: `keep` (default), `remove`, or `pseudonymize`. |
+| `prefix` | Prefix for the pseudonym when `fallback: pseudonymize` is used (e.g. `PID_`). |
 
 ## License
 

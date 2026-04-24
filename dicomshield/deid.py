@@ -101,12 +101,18 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
             value_column = str(rule.get("value_column", "")).strip()
             fallback = str(rule.get("fallback", "keep")).strip().lower()
 
+            prefix = str(rule.get("prefix", "PX_"))
+
             # Path is empty or env var was not set (still contains $)
             csv_missing = not csv_path or "$" in csv_path or not Path(csv_path).is_file()
             if csv_missing:
                 if fallback == "remove":
                     del ds[tag]
                     changes.append({"tag": tag_str, "action": "map_csv", "status": "no_csv_removed"})
+                elif fallback == "pseudonymize":
+                    new_val = pseudonymize(old_value, prefix=prefix)
+                    ds[tag].value = new_val
+                    changes.append({"tag": tag_str, "action": "map_csv", "old": old_value, "new": new_val, "status": "no_csv_pseudonymized"})
                 else:
                     changes.append({"tag": tag_str, "action": "map_csv", "status": "no_csv_kept"})
                 continue
@@ -125,6 +131,12 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
                             "new": "",
                             "status": "removed_missing_mapping",
                         }
+                    )
+                elif fallback == "pseudonymize":
+                    new_val = pseudonymize(old_value, prefix=prefix)
+                    ds[tag].value = new_val
+                    changes.append(
+                        {"tag": tag_str, "action": "map_csv", "old": old_value, "new": new_val, "status": "pseudonymized_missing_mapping"}
                     )
                 else:
                     changes.append(

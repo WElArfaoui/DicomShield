@@ -4,31 +4,43 @@ profile:
 
 policies:
   # Remove manufacturer private tags to reduce PHI leaks.
-  remove_private_tags: true 
+  remove_private_tags: true
   # Apply rules also inside sequences (SQ).
   recurse_sequences: true
   # If DICOM indicates embedded pixel text, mark for quarantine.
   reject_burned_in_yes: true
 
 tag_actions:
-  # Direct identifiers
-  "(0010,0010)": {action: "replace", value: "ANON"}       # PatientName
-  "(0010,0020)": {action: "pseudonymize", prefix: "PID_"} # PatientID
-  "(0010,0030)": {action: "keep_year"}                    # PatientBirthDate (YYYY0101)
-  "(0008,0050)":                                           # AccessionNumber -> iELCAP ID
+  # --- Direct identifiers ---
+  "(0010,0010)": {action: "replace", value: "ANON"}   # PatientName
+  "(0010,0030)": {action: "keep_year"}                 # PatientBirthDate -> YYYY0101
+  "(0008,0090)": {action: "remove"}                    # ReferringPhysicianName
+
+  # PatientID: map NHC -> iELCAP ID via CSV.
+  # If the NHC is not in the CSV, pseudonymise it (never keep the raw NHC).
+  "(0010,0020)":
     action: "map_csv"
-    # Public-friendly: set env var DICOMSHIELD_IELCAP_MAP_CSV to your local CSV path.
     csv_path: "${DICOMSHIELD_IELCAP_MAP_CSV}"
     key_column: "nhc"
     value_column: "id_ielcap"
-    fallback: "keep"
-  "(0008,0090)": {action: "remove"}                       # ReferringPhysicianName
+    fallback: "pseudonymize"
+    prefix: "PID_"
 
-  # Risk-free text: may contain names or IDs
-  "(0008,1030)": {action: "clean_text"} # StudyDescription
-  "(0008,103E)": {action: "clean_text"} # SeriesDescription
-  "(0018,1030)": {action: "clean_text"} # ProtocolName
+  # AccessionNumber: same mapping NHC -> iELCAP ID.
+  "(0008,0050)":
+    action: "map_csv"
+    csv_path: "${DICOMSHIELD_IELCAP_MAP_CSV}"
+    key_column: "nhc"
+    value_column: "id_ielcap"
+    fallback: "pseudonymize"
+    prefix: "ACC_"
+
+  # --- Clinical descriptions: NOT PHI, keep intact ---
+  # StudyDescription, SeriesDescription and ProtocolName contain scanner
+  # protocol names (e.g. "Torax CON CIV 2.0"), not patient-identifying data.
+  # Removing them from tag_actions leaves them untouched.
 
 uids:
-  # If enabled, remap UIDs with deterministic hash.
-  remap: true 
+  # Remap UIDs with deterministic HMAC so the same file always gets the
+  # same UID, but the mapping is not reversible without DICOMSHIELD_SECRET.
+  remap: true

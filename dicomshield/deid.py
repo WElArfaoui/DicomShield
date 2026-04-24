@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import pydicom
-from pydicom.dataset import Dataset
+from pydicom.dataset import Dataset, FileMetaDataset
+from pydicom.uid import ExplicitVRLittleEndian
 
 from .audit import AuditRecord
 from .config import Profile, parse_tag
@@ -40,6 +41,7 @@ def deidentify_file(input_path: Path, output_path: Path, profile: Profile) -> Au
             return audit
 
         _apply_rules(ds, profile, audit.changes)
+        _ensure_file_meta(ds)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         ds.save_as(str(output_path), write_like_original=False)
         return audit
@@ -92,14 +94,23 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
                 {"tag": tag_str, "action": "keep_year", "old": old_value, "new": new_value}
             )
         elif action == "map_csv":
-            csv_path = str(rule.get("csv_path", "")).strip()
+            csv_path = os.path.expandvars(os.path.expanduser(
+                str(rule.get("csv_path", "")).strip().strip("'\"")
+            )).strip()
             key_column = str(rule.get("key_column", "")).strip()
             value_column = str(rule.get("value_column", "")).strip()
-            if not csv_path or not key_column or not value_column:
-                raise ValueError(
-                    f"map_csv action for {tag_str} requires csv_path, key_column and value_column"
-                )
             fallback = str(rule.get("fallback", "keep")).strip().lower()
+
+            # Path is empty or env var was not set (still contains $)
+            csv_missing = not csv_path or "$" in csv_path or not Path(csv_path).is_file()
+            if csv_missing:
+                if fallback == "remove":
+                    del ds[tag]
+                    changes.append({"tag": tag_str, "action": "map_csv", "status": "no_csv_removed"})
+                else:
+                    changes.append({"tag": tag_str, "action": "map_csv", "status": "no_csv_kept"})
+                continue
+
             mapping = _get_csv_mapping(csv_path, key_column, value_column)
             new_value = mapping.get(old_value.strip())
 
@@ -159,7 +170,7 @@ def _keep_year_only(value: str) -> str:
 
 
 def _get_csv_mapping(csv_path: str, key_column: str, value_column: str) -> dict[str, str]:
-    resolved_path = str(Path(os.path.expandvars(os.path.expanduser(csv_path))).resolve())
+    resolved_path = str(Path(csv_path).resolve())
     cache_key = (resolved_path, key_column, value_column)
     if cache_key in _CSV_MAP_CACHE:
         return _CSV_MAP_CACHE[cache_key]
@@ -191,3 +202,21 @@ def _apply_rules_in_sequences(ds: Dataset, profile: Profile, changes: list[dict[
             continue
         for item in element.value:
             _apply_rules(item, profile, changes)
+
+
+def _ensure_file_meta(ds: Dataset) -> None:
+    """
+    Guarantee the minimum File Meta Information required by pydicom when
+    writing with write_like_original=False.  Some scanners produce files
+    without a complete meta header; we reconstruct it from the dataset tags.
+    """
+    if not hasattr(ds, "file_meta") or ds.file_meta is None:
+        ds.file_meta = FileMetaDataset()
+
+    meta = ds.file_meta
+    if not getattr(meta, "MediaStorageSOPClassUID", None):
+        meta.MediaStorageSOPClassUID = ds.get("SOPClassUID", "1.2.840.10008.5.1.4.1.1.2")
+    if not getattr(meta, "MediaStorageSOPInstanceUID", None):
+        meta.MediaStorageSOPInstanceUID = ds.get("SOPInstanceUID", "")
+    if not getattr(meta, "TransferSyntaxUID", None):
+        meta.TransferSyntaxUID = ExplicitVRLittleEndian

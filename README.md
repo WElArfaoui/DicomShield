@@ -18,6 +18,7 @@ pip install -e .
 
 ```bash
 export DICOMSHIELD_SECRET="change-this-key"
+export DICOMSHIELD_IELCAP_MAP_CSV="/absolute/path/to/ielcap_mapping.csv"
 dicomshield deid \
  -input-dir ./dicom_in \
  -output-dir ./dicom_out \
@@ -25,6 +26,23 @@ dicomshield deid \
  -audit-file ./audit.jsonl
 ```
 
+### Interactive mode (asks for missing fields)
+
+If you run without options, DicomShield asks for the required paths and secrets:
+
+```bash
+dicomshield deid
+```
+
 ## YAML Profile
 
-See `profiles/ct_lung_research.yaml`for a complete example with comments.
+See `profiles/ct_lung_research.yaml` for a complete example with comments.
+
+### CSV mapping for AccessionNumber
+
+The sample profile supports replacing DICOM `AccessionNumber` using a CSV lookup:
+
+- `csv_path`: path to CSV (supports `${ENV_VAR}`)
+- `key_column`: source value from DICOM (e.g. `nhc`)
+- `value_column`: replacement value (e.g. `id_ielcap`)
+- `fallback`: `keep` (default) or `remove` when there is no match

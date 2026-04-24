@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import os
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +13,7 @@ from .config import Profile, parse_tag
 from .pseudonym import pseudonymize, remap_uid
 
 UID_KEYS = ("StudyInstanceUID", "SeriesInstanceUID", "SOPInstanceUID")
+_CSV_MAP_CACHE: dict[tuple[str, str, str], dict[str, str]] = {}
 
 def deidentify_file(input_path: Path, output_path: Path, profile: Profile) -> AuditRecord:
     """
@@ -82,6 +85,51 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
             changes.append(
                 {"tag": tag_str, "action": "clean_text", "old": old_value, "new": "REDACTED"}
                 )
+        elif action == "keep_year":
+            new_value = _keep_year_only(old_value)
+            ds[tag].value = new_value
+            changes.append(
+                {"tag": tag_str, "action": "keep_year", "old": old_value, "new": new_value}
+            )
+        elif action == "map_csv":
+            csv_path = str(rule.get("csv_path", "")).strip()
+            key_column = str(rule.get("key_column", "")).strip()
+            value_column = str(rule.get("value_column", "")).strip()
+            if not csv_path or not key_column or not value_column:
+                raise ValueError(
+                    f"map_csv action for {tag_str} requires csv_path, key_column and value_column"
+                )
+            fallback = str(rule.get("fallback", "keep")).strip().lower()
+            mapping = _get_csv_mapping(csv_path, key_column, value_column)
+            new_value = mapping.get(old_value.strip())
+
+            if not new_value:
+                if fallback == "remove":
+                    del ds[tag]
+                    changes.append(
+                        {
+                            "tag": tag_str,
+                            "action": "map_csv",
+                            "old": old_value,
+                            "new": "",
+                            "status": "removed_missing_mapping",
+                        }
+                    )
+                else:
+                    changes.append(
+                        {
+                            "tag": tag_str,
+                            "action": "map_csv",
+                            "old": old_value,
+                            "new": old_value,
+                            "status": "mapping_not_found",
+                        }
+                    )
+            else:
+                ds[tag].value = str(new_value)
+                changes.append(
+                    {"tag": tag_str, "action": "map_csv", "old": old_value, "new": str(new_value)}
+                )
         else:
             raise ValueError(f"Unsupported action: {action} for tag {tag_str}")
 
@@ -99,6 +147,40 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
     
     if profile.recurse_sequences:
         _apply_rules_in_sequences(ds, profile, changes)
+
+
+def _keep_year_only(value: str) -> str:
+    value = (value or "").strip()
+    year = value[:4]
+    if len(year) == 4 and year.isdigit():
+        # Keep only year precision while preserving valid DICOM DA format.
+        return f"{year}0101"
+    return "19000101"
+
+
+def _get_csv_mapping(csv_path: str, key_column: str, value_column: str) -> dict[str, str]:
+    resolved_path = str(Path(os.path.expandvars(os.path.expanduser(csv_path))).resolve())
+    cache_key = (resolved_path, key_column, value_column)
+    if cache_key in _CSV_MAP_CACHE:
+        return _CSV_MAP_CACHE[cache_key]
+
+    mapping: dict[str, str] = {}
+    with Path(resolved_path).open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames:
+            raise ValueError(f"CSV without header: {resolved_path}")
+        if key_column not in reader.fieldnames or value_column not in reader.fieldnames:
+            raise ValueError(
+                f"CSV columns not found in {resolved_path}. Needed: {key_column}, {value_column}"
+            )
+        for row in reader:
+            key = (row.get(key_column) or "").strip()
+            value = (row.get(value_column) or "").strip()
+            if key and value and key not in mapping:
+                mapping[key] = value
+
+    _CSV_MAP_CACHE[cache_key] = mapping
+    return mapping
     
 def _apply_rules_in_sequences(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -> None:
     """

@@ -14,8 +14,14 @@ tag_actions:
   # Direct identifiers
   "(0010,0010)": {action: "replace", value: "ANON"}       # PatientName
   "(0010,0020)": {action: "pseudonymize", prefix: "PID_"} # PatientID
-  "(0010,0030)": {action: "remove"}                       # PatientBirthDate
-  "(0008,0050)": {action: "remove"}                       # AccessionNumber
+  "(0010,0030)": {action: "keep_year"}                    # PatientBirthDate (YYYY0101)
+  "(0008,0050)":                                           # AccessionNumber -> iELCAP ID
+    action: "map_csv"
+    # Public-friendly: set env var DICOMSHIELD_IELCAP_MAP_CSV to your local CSV path.
+    csv_path: "${DICOMSHIELD_IELCAP_MAP_CSV}"
+    key_column: "nhc"
+    value_column: "id_ielcap"
+    fallback: "keep"
   "(0008,0090)": {action: "remove"}                       # ReferringPhysicianName
 
   # Risk-free text: may contain names or IDs

@@ -20,7 +20,7 @@ class Profile:
 
     @property
     def remove_private_tags(self) -> bool:
-        return bool(self.raw.get("policies", {}).get("recurse_sequences", True))
+        return bool(self.raw.get("policies", {}).get("remove_private_tags", True))
 
     @property
     def recurse_sequences(self) -> bool:

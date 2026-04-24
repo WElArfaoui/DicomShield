@@ -3,21 +3,18 @@ profile:
   description: "Base profile for lung CT research"
 
 policies:
-  # Remove manufacturer private tags to reduce PHI leaks.
   remove_private_tags: true
-  # Apply rules also inside sequences (SQ).
   recurse_sequences: true
-  # If DICOM indicates embedded pixel text, mark for quarantine.
   reject_burned_in_yes: true
 
 tag_actions:
-  # --- Direct identifiers ---
+
+  # --- Patient direct identifiers ---
   "(0010,0010)": {action: "replace", value: "ANON"}   # PatientName
   "(0010,0030)": {action: "keep_year"}                 # PatientBirthDate -> YYYY0101
   "(0008,0090)": {action: "remove"}                    # ReferringPhysicianName
 
-  # PatientID: map NHC -> iELCAP ID via CSV.
-  # If the NHC is not in the CSV, pseudonymise it (never keep the raw NHC).
+  # PatientID: map NHC -> iELCAP/SAL ID. Pseudonymize if not in CSV.
   "(0010,0020)":
     action: "map_csv"
     csv_path: "${DICOMSHIELD_IELCAP_MAP_CSV}"
@@ -26,7 +23,7 @@ tag_actions:
     fallback: "pseudonymize"
     prefix: "PID_"
 
-  # AccessionNumber: same mapping NHC -> iELCAP ID.
+  # AccessionNumber: same NHC -> iELCAP mapping.
   "(0008,0050)":
     action: "map_csv"
     csv_path: "${DICOMSHIELD_IELCAP_MAP_CSV}"
@@ -35,12 +32,35 @@ tag_actions:
     fallback: "pseudonymize"
     prefix: "ACC_"
 
+  # --- Hospital / equipment identifiers ---
+  "(0008,0080)": {action: "remove"}  # InstitutionName
+  "(0008,0081)": {action: "remove"}  # InstitutionAddress
+  "(0008,1010)": {action: "remove"}  # StationName
+  "(0018,1000)": {action: "remove"}  # DeviceSerialNumber
+
+  # --- Dates: kept intact (needed for research timeline) ---
+  # StudyDate, SeriesDate, AcquisitionDate, ContentDate are preserved.
+  # DateOfLastCalibration is also kept as technical metadata.
+
+  # --- Times: remove entirely (no research value, high re-identification risk) ---
+  "(0008,002a)": {action: "remove"}  # AcquisitionDateTime
+  "(0008,0030)": {action: "remove"}  # StudyTime
+  "(0008,0031)": {action: "remove"}  # SeriesTime
+  "(0008,0032)": {action: "remove"}  # AcquisitionTime
+  "(0008,0033)": {action: "remove"}  # ContentTime
+  "(0018,1201)": {action: "remove"}  # TimeOfLastCalibration
+
+  # --- Administrative IDs internal to the hospital ---
+  "(0020,0010)": {action: "remove"}     # StudyID (contains acquisition date)
+  "(0032,1060)": {action: "remove"}     # RequestedProcedureDescription
+  "(0040,0009)": {action: "remove"}     # ScheduledProcedureStepID (inside sequences too)
+
   # --- Clinical descriptions: NOT PHI, keep intact ---
   # StudyDescription, SeriesDescription and ProtocolName contain scanner
   # protocol names (e.g. "Torax CON CIV 2.0"), not patient-identifying data.
-  # Removing them from tag_actions leaves them untouched.
 
 uids:
-  # Remap UIDs with deterministic HMAC so the same file always gets the
-  # same UID, but the mapping is not reversible without DICOMSHIELD_SECRET.
+  # Remap with deterministic HMAC — not reversible without DICOMSHIELD_SECRET.
+  # FrameOfReferenceUID and IrradiationEventUID are also remapped because
+  # their original values embed the scanner serial number.
   remap: true

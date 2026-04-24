@@ -13,7 +13,13 @@ from .audit import AuditRecord
 from .config import Profile, parse_tag
 from .pseudonym import pseudonymize, remap_uid
 
-UID_KEYS = ("StudyInstanceUID", "SeriesInstanceUID", "SOPInstanceUID")
+UID_KEYS = (
+    "StudyInstanceUID",
+    "SeriesInstanceUID",
+    "SOPInstanceUID",
+    "FrameOfReferenceUID",       # embeds scanner serial number in original value
+    "IrradiationEventUID",       # embeds scanner serial number in original value
+)
 _CSV_MAP_CACHE: dict[tuple[str, str, str], dict[str, str]] = {}
 
 def deidentify_file(input_path: Path, output_path: Path, profile: Profile) -> AuditRecord:

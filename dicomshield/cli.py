@@ -9,7 +9,13 @@ from .audit import append_audit_line
 from .config import load_profile
 from .deid import deidentify_file
 
-app = typer.Typer(help="DicomShield:Configurable DICOM pseudo-anonymiser")
+app = typer.Typer(no_args_is_help=True)
+
+
+@app.callback()
+def main() -> None:
+    """DicomShield: YAML-configurable DICOM pseudo-anonymiser."""
+
 
 @app.command("deid")
 def deid_command(

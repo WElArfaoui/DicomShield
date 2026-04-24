@@ -217,6 +217,7 @@ def _ensure_file_meta(ds: Dataset) -> None:
     if not getattr(meta, "MediaStorageSOPClassUID", None):
         meta.MediaStorageSOPClassUID = ds.get("SOPClassUID", "1.2.840.10008.5.1.4.1.1.2")
     if not getattr(meta, "MediaStorageSOPInstanceUID", None):
-        meta.MediaStorageSOPInstanceUID = ds.get("SOPInstanceUID", "")
+        sop = str(ds.get("SOPInstanceUID", "")).strip()
+        meta.MediaStorageSOPInstanceUID = sop if sop else pydicom.uid.generate_uid()
     if not getattr(meta, "TransferSyntaxUID", None):
         meta.TransferSyntaxUID = ExplicitVRLittleEndian

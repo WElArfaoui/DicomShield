@@ -71,7 +71,7 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
         elif action == "pseudonymize":
             prefix = str(rule.get("prefix", "PX_"))
             new_value = pseudonymize(old_value, prefix=prefix)
-            ds[tag].value =new_value
+            ds[tag].value = new_value
             changes.append(
                 {
                     "tag": tag_str,

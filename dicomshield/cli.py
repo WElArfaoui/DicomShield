@@ -51,7 +51,7 @@ def deid_command(
         else:
             errors += 1
     typer.echo(
-        f"Finalished. OK{processed} | Quarantine{quarantined} | Error{errors} | Audit{audit_file}"
+        f"Done. OK: {processed} | Quarantine: {quarantined} | Errors: {errors} | Audit: {audit_file}"
     )
 
 

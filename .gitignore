@@ -1,4 +1,20 @@
-#Entorno virtual
+# Virtual environment
+.venv/
+venv/
 
-.venv
-.git
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+
+# Audit logs (contain PHI — never commit)
+audit.jsonl
+*.jsonl
+
+# Secrets / mapping files (never commit)
+*.csv
+.env

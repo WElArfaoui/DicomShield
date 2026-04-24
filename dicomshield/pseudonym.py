@@ -30,10 +30,20 @@ def pseudonymize(value: str,prefix: str = "PX_",size: int = 16) -> str:
 
 def remap_uid(uid: str) -> str:
     """
-    Generates a DICOM UID derived from hash.
-        
-    We use root 2.25.<decimal_integer>, common practice for UUID/hash derived UIDs.
+    Generates a DICOM UID derived from HMAC-SHA256.
+
+    Uses DICOMSHIELD_SECRET so the mapping cannot be verified without the key.
+    Root prefix 2.25.<decimal_integer> follows common practice for hash-derived UIDs.
     """
-    # 128 bits of effective hash to keep reasonable size and stability.
-    as_int = int(hashlib.sha256(uid.encode("utf-8")).hexdigest()[:32], 16)
+    secret = os.environ.get("DICOMSHIELD_SECRET")
+    if not secret:
+        raise RuntimeError(
+            "DICOMSHIELD_SECRET is missing. Export the environment variable before running."
+        )
+    digest = hmac.new(
+        secret.encode("utf-8"),
+        uid.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    as_int = int(digest[:32], 16)
     return f"2.25.{as_int}"

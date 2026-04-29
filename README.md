@@ -20,12 +20,13 @@ pip install -e .
 
 ```bash
 export DICOMSHIELD_SECRET="change-this-to-a-strong-secret"
-export DICOMSHIELD_IELCAP_MAP_CSV="/absolute/path/to/mapping.csv"
+export DICOMSHIELD_MAP_CSV="/absolute/path/to/mapping.csv"
 
 dicomshield deid \
   --input-dir ./dicom_in \
   --output-dir ./dicom_out \
   --profile ./profiles/ct_lung_research.yaml \
+  --map-value-column id_ielcap \
   --audit-file ./audit.jsonl
 ```
 
@@ -85,7 +86,7 @@ and `AccessionNumber`.
 |---|---|
 | `csv_path` | Path to the CSV file. Supports `${ENV_VAR}` expansion. |
 | `key_column` | Column whose value is matched against the DICOM tag (e.g. `nhc`). |
-| `value_column` | Column used as the replacement value (e.g. `id_ielcap`). |
+| `value_column` | Column used as the replacement value (e.g. `id_ielcap`). Si no se define (o queda vacío) y no se pasa `--map-value-column` en la CLI, el tag se elimina por defecto. |
 | `fallback` | What to do when no match is found: `keep` (default), `remove`, or `pseudonymize`. |
 | `prefix` | Prefix for the pseudonym when `fallback: pseudonymize` is used (e.g. `PID_`). |
 

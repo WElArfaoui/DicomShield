@@ -109,6 +109,20 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
 
             prefix = str(rule.get("prefix", "PX_"))
 
+            # If the profile doesn't specify what column to map to (e.g. the user
+            # didn't pass --map-value-column), remove the tag by default.
+            if not key_column or not value_column:
+                del ds[tag]
+                changes.append(
+                    {
+                        "tag": tag_str,
+                        "action": "map_csv",
+                        "status": "removed_missing_csv_columns",
+                        "missing": {"key_column": key_column == "", "value_column": value_column == ""},
+                    }
+                )
+                continue
+
             # Path is empty or env var was not set (still contains $)
             csv_missing = not csv_path or "$" in csv_path or not Path(csv_path).is_file()
             if csv_missing:
@@ -126,7 +140,7 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
             mapping = _get_csv_mapping(csv_path, key_column, value_column)
             new_value = mapping.get(old_value.strip())
 
-            if not new_value:
+            if new_value is None:
                 if fallback == "remove":
                     del ds[tag]
                     changes.append(

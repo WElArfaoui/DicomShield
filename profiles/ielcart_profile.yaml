@@ -1,6 +1,6 @@
 profile:
-  name: "ct_lung_research_v1"
-  description: "Base profile for lung CT research"
+  name: "IELCART"
+  description: "Profile for IELCART"
 
 policies:
   remove_private_tags: true
@@ -11,7 +11,6 @@ tag_actions:
 
   # --- Patient direct identifiers ---
   "(0010,0010)": {action: "replace", value: "ANON"}   # PatientName
-  "(0010,0030)": {action: "keep_year"}                 # PatientBirthDate -> YYYY0101
   "(0008,0090)": {action: "remove"}                    # ReferringPhysicianName
 
   # PatientID: map NHC -> iELCAP/SAL ID. Pseudonymize if not in CSV.
@@ -20,7 +19,6 @@ tag_actions:
     csv_path: "${DICOMSHIELD_MAP_CSV}"
     key_column: "nhc"
     fallback: "pseudonymize"
-    prefix: "PID_"
 
   # AccessionNumber: same NHC -> iELCAP mapping.
   "(0008,0050)":

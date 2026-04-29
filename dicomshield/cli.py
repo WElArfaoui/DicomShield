@@ -29,6 +29,11 @@ def deid_command(
     output_dir: Path | None = typer.Option(None, file_okay=False, dir_okay=True),
     profile: Path | None = typer.Option(None, file_okay=True, dir_okay=False),
     audit_file: Path = typer.Option(Path("audit.jsonl"), file_okay=True, dir_okay=False),
+    map_value_column: str | None = typer.Option(
+        None,
+        "--map-value-column",
+        help="Override value_column for all map_csv rules in the selected profile. If omitted, map_csv removes the tag by default when value_column is empty/missing.",
+    ),
 ) -> None:
     """Pseudo-anonymise all DICOM files in a directory."""
     input_dir = _ask_input_dir(input_dir)
@@ -37,6 +42,8 @@ def deid_command(
     _ask_required_secrets()
 
     prof = load_profile(profile)
+    if map_value_column:
+        _override_map_value_column(prof, map_value_column)
 
     processed = errors = quarantined = 0
     for source_path in input_dir.rglob("*"):
@@ -238,14 +245,32 @@ def _ask_required_secrets() -> None:
             hide_input=True,
             confirmation_prompt=True,
         )
-    if not os.environ.get("DICOMSHIELD_IELCAP_MAP_CSV"):
-        csv_path = typer.prompt(
-            "Ruta CSV para mapear AccessionNumber (nhc -> id_ielcap)",
-            default="",
-            show_default=False,
-        ).strip().strip("'\"")
-        if csv_path:
-            os.environ["DICOMSHIELD_IELCAP_MAP_CSV"] = csv_path
+    if not os.environ.get("DICOMSHIELD_MAP_CSV"):
+        # Backwards compatibility (older profiles/README used this env var name).
+        legacy_csv_path = os.environ.get("DICOMSHIELD_IELCAP_MAP_CSV")
+        if legacy_csv_path:
+            os.environ["DICOMSHIELD_MAP_CSV"] = legacy_csv_path
+        else:
+            csv_path = typer.prompt(
+                "Ruta CSV para mapear identificadores (key_column -> value_column)",
+                default="",
+                show_default=False,
+            ).strip().strip("'\"")
+            if csv_path:
+                os.environ["DICOMSHIELD_MAP_CSV"] = csv_path
+
+
+def _override_map_value_column(prof, column_name: str) -> None:
+    """
+    Override map_csv value_column in-memory for this CLI run.
+    """
+    normalized = column_name.strip()
+    if not normalized:
+        raise typer.BadParameter("map_value_column no puede estar vacia")
+
+    for rule in prof.tag_actions.values():
+        if isinstance(rule, dict) and rule.get("action") == "map_csv":
+            rule["value_column"] = normalized
 
 
 if __name__ == "__main__":

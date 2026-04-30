@@ -50,6 +50,8 @@ tag_actions:
   "(0020,0010)": {action: "remove"}     # StudyID (contains acquisition date)
   "(0032,1060)": {action: "remove"}     # RequestedProcedureDescription
   "(0040,0009)": {action: "remove"}     # ScheduledProcedureStepID (inside sequences too)
+  "(0010,1002)": {action: "remove"}     # OtherPatientIDsSequence (leaks scanner-assigned research ID)
+  "(0040,1001)": {action: "remove"}     # RequestedProcedureID (UUID hospital order ID, inside sequences too)
 
   # --- Clinical descriptions: NOT PHI, keep intact ---
   # StudyDescription, SeriesDescription and ProtocolName contain scanner

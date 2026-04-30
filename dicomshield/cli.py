@@ -10,6 +10,7 @@ import typer
 from .audit import append_audit_line
 from .config import load_profile
 from .deid import deidentify_file
+from .patch import patch_directory
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -204,6 +205,61 @@ def report_command(
         for msg, n in error_msgs.most_common(5):
             typer.echo(f"    {n:>4}x  {msg}")
     typer.echo(f"{'='*50}\n")
+
+
+# ---------------------------------------------------------------------------
+# patch
+# ---------------------------------------------------------------------------
+
+@app.command("patch")
+def patch_command(
+    input_dir: Path = typer.Option(
+        ..., "--input-dir", file_okay=False, dir_okay=True,
+        help="Carpeta raíz con los DICOM ya procesados.",
+    ),
+    old_prefix: str = typer.Option(
+        "IAT", "--old-prefix",
+        help="Prefijo a reemplazar en PatientID.",
+    ),
+    new_prefix: str = typer.Option(
+        "ITA", "--new-prefix",
+        help="Prefijo de sustitución en PatientID.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Solo cuenta los cambios sin escribir en disco.",
+    ),
+) -> None:
+    """Fix residual PHI issues in already-processed DICOM files.
+
+    Three operations are applied to every file:
+
+    \b
+    1. PatientID prefix: replaces --old-prefix with --new-prefix at every
+       level (top-level tag and inside sequence items).
+    2. OtherPatientIDsSequence (0010,1002): removed — leaks the scanner-
+       assigned research ID even in pseudonymised (PX_*) files.
+    3. RequestedProcedureID (0040,1001): removed from RequestAttributesSequence
+       — contains UUID hospital order identifiers not needed for research.
+    """
+    if not input_dir.exists() or not input_dir.is_dir():
+        typer.echo(f"Carpeta no encontrada: {input_dir}", err=True)
+        raise typer.Exit(1)
+
+    mode = "DRY-RUN" if dry_run else "ESCRITURA"
+    typer.echo(f"Modo {mode} — carpeta: {input_dir}")
+    typer.echo(f"Prefijo: {old_prefix!r} -> {new_prefix!r}\n")
+
+    modified, unchanged, errors = patch_directory(
+        input_dir, old_prefix=old_prefix, new_prefix=new_prefix, dry_run=dry_run
+    )
+
+    typer.echo(
+        f"\nResultado: {modified} modificados, {unchanged} sin cambios, "
+        f"{errors} errores  (total {modified + unchanged + errors})"
+    )
+    if errors:
+        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------

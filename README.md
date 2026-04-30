@@ -43,6 +43,7 @@ dicomshield deid
 | Command | Description |
 |---|---|
 | `deid` | Pseudo-anonymise all DICOM files in a directory |
+| `patch` | Fix residual PHI issues in already-processed DICOM files |
 | `validate` | Validate a YAML profile and show its configured rules |
 | `audit` | Browse and filter the audit log |
 | `report` | Show a processing summary from the audit log |
@@ -55,6 +56,38 @@ dicomshield report --audit-file ./audit.jsonl
 dicomshield audit --audit-file ./audit.jsonl --errors
 dicomshield audit --audit-file ./audit.jsonl --status quarantine --tail 20
 ```
+
+## `patch` — post-processing corrective pass
+
+Use `patch` to fix batches that were produced before the profile covered every
+PHI leak vector, or to correct metadata errors discovered after `deid` was run.
+
+Each run applies three operations to every `.dcm` file under `--input-dir`:
+
+| # | Field | Action | Reason |
+|---|---|---|---|
+| 1 | `PatientID (0010,0020)` | Replace prefix `--old-prefix` → `--new-prefix` | Corrects a prefix typo in the scanner-assigned research ID; applied at every nesting level |
+| 2 | `OtherPatientIDsSequence (0010,1002)` | Remove | The scanner embeds the original research ID here; without removal it leaks even in pseudonymised (`PX_*`) files |
+| 3 | `RequestedProcedureID (0040,1001)` | Remove | UUID-format hospital order identifier stored inside `RequestAttributesSequence`; not needed for research |
+
+```bash
+# Dry run — counts changes without writing to disk
+dicomshield patch \
+  --input-dir ./dicom_out \
+  --old-prefix IAT \
+  --new-prefix ITA \
+  --dry-run
+
+# Apply changes
+dicomshield patch \
+  --input-dir ./dicom_out \
+  --old-prefix IAT \
+  --new-prefix ITA
+```
+
+> **Note** — the profile (`ielcart_profile.yaml`) has been updated to remove
+> `OtherPatientIDsSequence` and `RequestedProcedureID` during `deid`, so `patch`
+> is only required for batches already on disk.
 
 ## Security notes
 

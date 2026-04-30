@@ -14,11 +14,17 @@ tag_actions:
   "(0008,0090)": {action: "remove"}                    # ReferringPhysicianName
 
   # PatientID: map NHC -> iELCAP/SAL ID. Pseudonymize if not in CSV.
+  # Some scanners write a workstation code (e.g. REGO0600918001) into
+  # PatientID and keep the real NHC inside OtherPatientIDsSequence; the flag
+  # below makes the lookup also try those values before falling back.
+  # NOTE: this rule must run before the (0010,1002) remove rule so the
+  # sequence is still present when the secondary lookup runs.
   "(0010,0020)":
     action: "map_csv"
     csv_path: "${DICOMSHIELD_MAP_CSV}"
     key_column: "nhc"
     fallback: "pseudonymize"
+    also_lookup_other_patient_ids: true
 
   # AccessionNumber: same NHC -> iELCAP mapping.
   "(0008,0050)":

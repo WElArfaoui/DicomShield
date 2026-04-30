@@ -138,7 +138,22 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
                 continue
 
             mapping = _get_csv_mapping(csv_path, key_column, value_column)
-            new_value = mapping.get(old_value.strip())
+
+            # Primary lookup: the tag's own value.
+            # Optional secondary lookup: scan OtherPatientIDsSequence (0010,1002)
+            # for inner PatientID values. Some scanners record the NHC there
+            # while putting an alphanumeric workstation code in PatientID.
+            candidate_keys: list[str] = [old_value.strip()]
+            if rule.get("also_lookup_other_patient_ids"):
+                candidate_keys.extend(_extract_other_patient_ids(ds))
+
+            new_value = None
+            matched_key = None
+            for k in candidate_keys:
+                if k and k in mapping:
+                    new_value = mapping[k]
+                    matched_key = k
+                    break
 
             if new_value is None:
                 if fallback == "remove":
@@ -170,9 +185,16 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
                     )
             else:
                 ds[tag].value = str(new_value)
-                changes.append(
-                    {"tag": tag_str, "action": "map_csv", "old": old_value, "new": str(new_value)}
-                )
+                change = {
+                    "tag": tag_str,
+                    "action": "map_csv",
+                    "old": old_value,
+                    "new": str(new_value),
+                }
+                if matched_key and matched_key != old_value.strip():
+                    change["status"] = "matched_via_other_patient_ids"
+                    change["matched_key"] = matched_key
+                changes.append(change)
         else:
             raise ValueError(f"Unsupported action: {action} for tag {tag_str}")
 
@@ -225,6 +247,27 @@ def _get_csv_mapping(csv_path: str, key_column: str, value_column: str) -> dict[
     _CSV_MAP_CACHE[cache_key] = mapping
     return mapping
     
+def _extract_other_patient_ids(ds: Dataset) -> list[str]:
+    """
+    Return all non-empty PatientID (0010,0020) values found inside
+    OtherPatientIDsSequence (0010,1002). Some scanners write the workstation
+    code into the top-level PatientID and keep the real NHC here.
+    """
+    out: list[str] = []
+    seq_tag = (0x0010, 0x1002)
+    if seq_tag not in ds:
+        return out
+    seq_value = ds[seq_tag].value
+    if not seq_value:
+        return out
+    for item in seq_value:
+        if (0x0010, 0x0020) in item:
+            val = str(item[0x0010, 0x0020].value).strip()
+            if val:
+                out.append(val)
+    return out
+
+
 def _apply_rules_in_sequences(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -> None:
     """
     Traverse sequences (SQ) and apply the same rule engine.

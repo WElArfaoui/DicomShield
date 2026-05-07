@@ -45,7 +45,7 @@ def load_profile(profile_path: Path) -> Profile:
     tag_actions = raw.get("tag_actions", {})
     if not isinstance(tag_actions, dict):
         raise ValueError("'tag_actions' must be a dictionary of tags -> rule.")
-    
+
     for tag_str, rule in tag_actions.items():
         _parse_tag(tag_str)
         if not isinstance(rule, dict):

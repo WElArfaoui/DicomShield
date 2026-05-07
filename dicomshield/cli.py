@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 import typer
@@ -187,7 +187,7 @@ def report_command(
 
     total = sum(counts.values())
     typer.echo(f"\n{'='*50}")
-    typer.echo(f"  DicomShield — Processing Report")
+    typer.echo("  DicomShield — Processing Report")
     typer.echo(f"{'='*50}")
     typer.echo(f"  Audit file : {audit_file}")
     typer.echo(f"  Total files: {total}")
@@ -197,11 +197,11 @@ def report_command(
     typer.echo(f"  Errors     : {counts['error']}")
     typer.echo(f"{'─'*50}")
     typer.echo(f"  Unique pseudonymised patients: {len(patients)}")
-    typer.echo(f"\n  Actions applied:")
+    typer.echo("\n  Actions applied:")
     for action, n in actions_applied.most_common():
         typer.echo(f"    {action:<22} {n:>6}")
     if error_msgs:
-        typer.echo(f"\n  Top error types:")
+        typer.echo("\n  Top error types:")
         for msg, n in error_msgs.most_common(5):
             typer.echo(f"    {n:>4}x  {msg}")
     typer.echo(f"{'='*50}\n")

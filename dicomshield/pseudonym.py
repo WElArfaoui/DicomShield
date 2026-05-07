@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import os
 
+
 def pseudonymize(value: str,prefix: str = "PX_",size: int = 16) -> str:
     """
 

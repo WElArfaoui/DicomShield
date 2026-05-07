@@ -209,7 +209,7 @@ def _apply_rules(ds: Dataset, profile: Profile, changes: list[dict[str, Any]]) -
                 new_uid = remap_uid(old_uid)
                 ds[key].value = new_uid
                 changes.append({"tag": key, "action": "remap_uid", "old": old_uid, "new": new_uid})
-    
+
     if profile.recurse_sequences:
         _apply_rules_in_sequences(ds, profile, changes)
 
@@ -246,7 +246,7 @@ def _get_csv_mapping(csv_path: str, key_column: str, value_column: str) -> dict[
 
     _CSV_MAP_CACHE[cache_key] = mapping
     return mapping
-    
+
 def _extract_other_patient_ids(ds: Dataset) -> list[str]:
     """
     Return all non-empty PatientID (0010,0020) values found inside

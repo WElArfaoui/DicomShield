@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-@dataclass 
+@dataclass
 class AuditRecord:
     """Audit record for a processed file."""
 

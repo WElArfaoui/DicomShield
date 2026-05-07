@@ -48,11 +48,15 @@ Issues   = "https://github.com/WElArfaoui/dicom-shield/issues"
 packages = ["dicomshield"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "B008",   # typer.Option(...) as default is the idiomatic Typer API
+    "E501",   # don't fail CI on overly long lines (refactor incrementally)
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

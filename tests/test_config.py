@@ -31,7 +31,7 @@ policies:
 uids:
   remap: false
 tag_actions:
-  PatientName:
+  "(0010,0010)":
     action: replace
     value: ANONYMOUS
 """))
@@ -40,5 +40,16 @@ tag_actions:
     assert profile.reject_burned_in_yes is True
     assert profile.remap_uids is False
     assert profile.tag_actions == {
-        "PatientName": {"action": "replace", "value": "ANONYMOUS"}
+        "(0010,0010)": {"action": "replace", "value": "ANONYMOUS"}
     }
+
+
+def test_load_invalid_tag_format_raises(tmp_path: Path) -> None:
+    import pytest
+    with pytest.raises(ValueError, match="Invalid tag format"):
+        load_profile(_write_profile(tmp_path, """
+tag_actions:
+  PatientName:
+    action: replace
+    value: ANONYMOUS
+"""))

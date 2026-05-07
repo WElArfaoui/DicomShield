@@ -123,6 +123,10 @@ and `AccessionNumber`.
 | `fallback` | What to do when no match is found: `keep` (default), `remove`, or `pseudonymize`. |
 | `prefix` | Prefix for the pseudonym when `fallback: pseudonymize` is used (e.g. `PID_`). |
 
+## Author
+
+**Wasim El Arfaoui** — <elarfaouiwasim@gmail.com>
+
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE). © 2024-2026 Wasim El Arfaoui.

@@ -1,21 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "dicomshield"
 version = "0.1.0"
-description = "YAML-configurable DICOM pseudo-anonymiser"
+description = "YAML-configurable DICOM pseudo-anonymiser with deterministic HMAC mapping and audit trail."
 readme = "README.md"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
+authors = [
+    { name = "Wasim El Arfaoui", email = "elarfaouiwasim@gmail.com" },
+]
+keywords = ["dicom", "anonymisation", "pseudonymisation", "phi", "medical-imaging", "research"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
 dependencies = [
-  "pydicom>=2.4.0",
-  "PyYAML>=6.0.0",
-  "typer>=0.12.0",
+    "pydicom>=2.4.0",
+    "PyYAML>=6.0.0",
+    "typer>=0.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.5",
 ]
 
 [project.scripts]
 dicomshield = "dicomshield.cli:app"
 
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+[project.urls]
+Homepage = "https://github.com/WElArfaoui/dicom-shield"
+Issues   = "https://github.com/WElArfaoui/dicom-shield/issues"
 
 [tool.setuptools]
 packages = ["dicomshield"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
